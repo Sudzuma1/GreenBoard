@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Объявления "Лесная поляна"</title>
+    <style>
+        /* Ваши стили */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        header {
+            background-color: #007BFF;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        main {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .ad-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .ad {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .ad:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .ad img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .ad h3 {
+            font-size: 1.2rem;
+            margin: 0 0 5px 0;
+        }
+        .ad p {
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .ad.gold {
+            border: 2px solid gold;
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .ad button {
+            margin-top: 10px;
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .ad button:hover {
+            background: #e60000;
+        }
+        form {
+            margin: 20px auto;
+            max-width: 500px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        form input, form textarea, form button {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        form button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        form button:hover {
+            background: #0056b3;
+        }
+        .promo-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 250px;
+        }
+        .promo-box h4 {
+            margin: 0 0 10px;
+        }
+        .promo-box input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .promo-box button {
+            background: gold;
+            color: black;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+            transition: background 0.2s ease;
+        }
+        .promo-box button:hover {
+            background: #ffd700;
+        }
+        footer {
+            background: #f5f7fa;
+            color: #555;
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .whatsapp-link {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: #25D366;
+            color: white;
+            padding: 15px;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .whatsapp-link:hover {
+            background: #1da851;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        Объявления "Лесная поляна"
+    </header>
+    <main>
+        <form id="adForm">
+            <input type="text" id="title" placeholder="Название объявления" maxlength="50" required>
+            <input type="file" id="photo" accept="image/*" required>
+            <textarea id="description" placeholder="Описание объявления (до 200 символов)" maxlength="200" required></textarea>
+            <button type="submit">Добавить объявление</button>
+        </form>
+        <div class="ad-grid" id="adGrid"></div>
+    </main>
+    <footer>
+        © 2025 Ваш сайт объявлений. Все права защищены.
+    </footer>
+    <div class="promo-box">
+        <h4>Введите промокод</h4>
+        <input type="text" id="promoCode" placeholder="Промокод">
+        <button onclick="applyPromo()">Активировать</button>
+    </div>
+    <a href="https://wa.me/77057247069" class="whatsapp-link" target="_blank">📞</a>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const adForm = document.getElementById('adForm');
+        const adGrid = document.getElementById('adGrid');
+        const promoCodeInput = document.getElementById('promoCode');
+        let promoUsed = false;
+        let promoCodes = [];
+        let userAds = { normal: null, premium: null }; // Лимит на объявления
+
+        // Генерация 20 промокодов
+        function generatePromoCodes(count = 20) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const codes = [];
+            for (let i = 0; i < count; i++) {
+                let promo = '';
+                for (let j = 0; j < 8; j++) {
+                    promo += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                codes.push(promo);
+            }
+            return codes;
+        }
+
+        // Инициализация промокодов
+        promoCodes = generatePromoCodes();
+        console.log('Доступные промокоды:', promoCodes);
+
+        // Обработка отправки формы
+        adForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const photoFile = document.getElementById('photo').files[0];
+            const description = document.getElementById('description').value;
+
+            // Проверка лимита
+            if (promoUsed && userAds.premium !== null) {
+                alert('Вы уже разместили премиум-объявление!');
+                return;
+            } else if (!promoUsed && userAds.normal !== null) {
+                alert('Вы уже разместили обычное объявление!');
+                return;
+            }
+
+            if (photoFile) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const newAd = {
+                        id: Date.now(),
+                        title,
+                        photo: e.target.result,
+                        description,
+                        isPremium: promoUsed,
+                    };
+
+                    socket.emit('new-ad', newAd);
+                    adForm.reset();
+
+                    // Обновление лимита
+                    if (promoUsed) {
+                        userAds.premium = newAd.id;
+                    } else {
+                        userAds.normal = newAd.id;
+                    }
+                    promoUsed = false;
+                };
+                reader.readAsDataURL(photoFile);
+            }
+        });
+
+        // Отображение новых объявлений
+        socket.on('new-ad', (ad) => {
+            const adElement = document.createElement('div');
+            adElement.className = `ad ${ad.isPremium ? 'gold' : ''}`;
+            adElement.innerHTML = `
+                <img src="${ad.photo}" alt="${ad.title}">
+                <h3>${ad.title}</h3>
+                <p>${ad.description}</p>
+                <button onclick="deleteAd(${ad.id})">Удалить</button>
+            `;
+            adGrid.prepend(adElement);
+        });
+
+        // Удаление объявления
+        function deleteAd(id) {
+            socket.emit('delete-ad', id);
+
+            // Сброс лимита
+            if (userAds.normal === id) {
+                userAds.normal = null;
+            } else if (userAds.premium === id) {
+                userAds.premium = null;
+            }
+        }
+
+        // Обработка удаления объявления
+        socket.on('delete-ad', (id) => {
+            const adElement = document.querySelector(`.ad button[onclick="deleteAd(${id})"]`)?.parentElement;
+            if (adElement) adElement.remove();
+        });
+
+        // Отображение начальных объявлений
+        socket.on('initial-ads', (ads) => {
+            adGrid.innerHTML = '';
+            ads.forEach(ad => {
+                const adElement = document.createElement('div');
+                adElement.className = `ad ${ad.isPremium ? 'gold' : ''}`;
+                adElement.innerHTML = `
+                    <img src="${ad.photo}" alt="${ad.title}">
+                    <h3>${ad.title}</h3>
+                    <p>${ad.description}</p>
+                    <button onclick="deleteAd(${ad.id})">Удалить</button>
+                `;
+                adGrid.appendChild(adElement);
+            });
+        });
+
+        // Промокоды
+        function applyPromo() {
+            const code = promoCodeInput.value;
+            if (promoCodes.includes(code)) {
+                promoUsed = true;
+                promoCodes = promoCodes.filter(promo => promo !== code); // Удаление использованного промокода
+                promoCodes.push(generatePromoCodes(1)[0]); // Добавление нового промокода
+                console.log('Обновленные промокоды:', promoCodes);
+                alert('Промокод активирован! Ваше следующее объявление будет премиум.');
+            } else {
+                alert('Неверный промокод!');
+            }
+            promoCodeInput.value = '';
+        }
+    </script>
+</body>
+</html>
