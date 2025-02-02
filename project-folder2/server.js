@@ -9,7 +9,13 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // Подключение к базе данных
-const db = new sqlite3.Database('./ads.db');
+const db = new sqlite3.Database('./ads.db', (err) => {
+    if (err) {
+        console.error('Ошибка подключения к базе:', err.message);
+    } else {
+        console.log('Подключено к SQLite');
+    }
+});
 
 // Создание таблицы, если её нет
 db.run(`CREATE TABLE IF NOT EXISTS ads (
@@ -80,7 +86,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Обработка удаления объявления
+    // Обработка удаления объявления по ID
     socket.on('delete-ad', (id) => {
         db.get(`SELECT userId FROM ads WHERE id = ?`, [id], (err, row) => {
             if (err) return console.error(err);
