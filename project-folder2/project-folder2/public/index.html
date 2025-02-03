@@ -164,6 +164,11 @@
         .whatsapp-link:hover {
             background: #1da851;
         }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +182,7 @@
             <textarea id="description" placeholder="Описание объявления (до 200 символов)" maxlength="200" required></textarea>
             <button type="submit">Добавить объявление</button>
         </form>
+        <div class="loading" id="loading">Загрузка...</div>
         <div class="ad-grid" id="adGrid"></div>
     </main>
     <footer>
@@ -195,27 +201,8 @@
         const adForm = document.getElementById('adForm');
         const adGrid = document.getElementById('adGrid');
         const promoCodeInput = document.getElementById('promoCode');
+        const loading = document.getElementById('loading');
         let promoUsed = false;
-        let promoCodes = [];
-        let userAds = { normal: null, premium: null }; // Лимит на объявления
-
-        // Генерация 20 промокодов
-        function generatePromoCodes(count = 20) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            const codes = [];
-            for (let i = 0; i < count; i++) {
-                let promo = '';
-                for (let j = 0; j < 8; j++) {
-                    promo += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                codes.push(promo);
-            }
-            return codes;
-        }
-
-        // Инициализация промокодов
-        promoCodes = generatePromoCodes();
-        console.log('Доступные промокоды:', promoCodes);
 
         // Обработка отправки формы
         adForm.addEventListener('submit', (e) => {
@@ -224,39 +211,35 @@
             const photoFile = document.getElementById('photo').files[0];
             const description = document.getElementById('description').value;
 
-            // Проверка лимита
-            if (promoUsed && userAds.premium !== null) {
-                alert('Вы уже разместили премиум-объявление!');
-                return;
-            } else if (!promoUsed && userAds.normal !== null) {
-                alert('Вы уже разместили обычное объявление!');
+            // Валидация данных
+            if (!title || !photoFile || !description) {
+                alert('Заполните все поля!');
                 return;
             }
 
-            if (photoFile) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const newAd = {
-                        id: Date.now(),
-                        title,
-                        photo: e.target.result,
-                        description,
-                        isPremium: promoUsed,
-                    };
+            // Показ индикатора загрузки
+            loading.style.display = 'block';
 
-                    socket.emit('new-ad', newAd);
-                    adForm.reset();
-
-                    // Обновление лимита
-                    if (promoUsed) {
-                        userAds.premium = newAd.id;
-                    } else {
-                        userAds.normal = newAd.id;
-                    }
-                    promoUsed = false;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const newAd = {
+                    title,
+                    photo: e.target.result,
+                    description,
+                    isPremium: promoUsed,
                 };
-                reader.readAsDataURL(photoFile);
-            }
+
+                socket.emit('new-ad', newAd, (response) => {
+                    if (response.success) {
+                        adForm.reset();
+                        promoUsed = false;
+                    } else {
+                        alert(response.message || 'Ошибка при добавлении объявления');
+                    }
+                    loading.style.display = 'none';
+                });
+            };
+            reader.readAsDataURL(photoFile);
         });
 
         // Отображение новых объявлений
@@ -274,14 +257,11 @@
 
         // Удаление объявления
         function deleteAd(id) {
-            socket.emit('delete-ad', id);
-
-            // Сброс лимита
-            if (userAds.normal === id) {
-                userAds.normal = null;
-            } else if (userAds.premium === id) {
-                userAds.premium = null;
-            }
+            socket.emit('delete-ad', id, (response) => {
+                if (!response.success) {
+                    alert(response.message || 'Ошибка при удалении объявления');
+                }
+            });
         }
 
         // Обработка удаления объявления
@@ -309,16 +289,15 @@
         // Промокоды
         function applyPromo() {
             const code = promoCodeInput.value;
-            if (promoCodes.includes(code)) {
-                promoUsed = true;
-                promoCodes = promoCodes.filter(promo => promo !== code); // Удаление использованного промокода
-                promoCodes.push(generatePromoCodes(1)[0]); // Добавление нового промокода
-                console.log('Обновленные промокоды:', promoCodes);
-                alert('Промокод активирован! Ваше следующее объявление будет премиум.');
-            } else {
-                alert('Неверный промокод!');
-            }
-            promoCodeInput.value = '';
+            socket.emit('apply-promo', code, (response) => {
+                if (response.success) {
+                    promoUsed = true;
+                    alert('Промокод активирован! Ваше следующее объявление будет премиум.');
+                } else {
+                    alert(response.message || 'Неверный промокод!');
+                }
+                promoCodeInput.value = '';
+            });
         }
     </script>
 </body>
